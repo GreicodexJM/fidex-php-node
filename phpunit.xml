@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true">
+
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+    </testsuites>
+
+    <coverage>
+        <include>
+            <directory suffix=".php">src</directory>
+        </include>
+    </coverage>
+
+    <php>
+        <!-- Use in-memory SQLite for tests -->
+        <env name="FIDEX_DB_DRIVER" value="sqlite"/>
+        <env name="FIDEX_DB_PATH" value=":memory:"/>
+        <env name="FIDEX_NODE_ID" value="urn:custom:test-node"/>
+        <env name="FIDEX_NODE_NAME" value="FideX Test Node"/>
+        <env name="FIDEX_NODE_BASE_URL" value="https://test.fidex.example.com"/>
+        <env name="FIDEX_API_KEY" value="test-api-key-do-not-use-in-prod"/>
+        <env name="FIDEX_LOG_LEVEL" value="error"/>
+    </php>
+
+</phpunit>

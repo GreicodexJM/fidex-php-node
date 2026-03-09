@@ -1,0 +1,38 @@
+version: '3.9'
+
+# FideX PHP — Development Environment
+# NOTE: This is for local development only. Production runs without Docker on cPanel/VPS.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: fidex_php
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html
+      - ./keys:/var/www/html/keys
+      - ./storage:/var/www/html/storage
+    environment:
+      - APP_ENV=development
+    env_file:
+      - .env
+    depends_on:
+      - mailhog
+    networks:
+      - fidex_net
+
+  # MailHog: Catches outbound emails in development (optional)
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: fidex_mailhog
+    ports:
+      - "8025:8025"
+    networks:
+      - fidex_net
+
+networks:
+  fidex_net:
+    driver: bridge

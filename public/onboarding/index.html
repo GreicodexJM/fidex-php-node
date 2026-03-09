@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="theme-color" content="#1a1a2e"/>
+  <title>FideX — Node Onboarding</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml"/>
+  <!-- base ensures relative assets resolve correctly at /onboarding AND /onboarding/ -->
+  <base href="/onboarding/"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <!-- ── Header ───────────────────────────────────────────────── -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="logo">
+        <img src="/img/fidex-logo.png" alt="FideX" class="logo-img"/>
+        <span class="logo-sub">Node Onboarding</span>
+      </div>
+      <div class="node-status" id="nodeStatus">
+        <span class="status-dot loading"></span>
+        <span class="status-label" id="statusLabel">Loading…</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Node Info Bar ─────────────────────────────────────────── -->
+  <div class="node-bar" id="nodeBar" hidden>
+    <div class="node-bar-inner">
+      <div class="node-field">
+        <span class="field-label">Node ID</span>
+        <span class="field-value mono" id="nodeId">—</span>
+      </div>
+      <div class="node-field">
+        <span class="field-label">Node Name</span>
+        <span class="field-value" id="nodeName">—</span>
+      </div>
+      <div class="node-field">
+        <span class="field-label">Partners</span>
+        <span class="field-value badge" id="partnerCount">0</span>
+      </div>
+      <div class="node-field">
+        <span class="field-label">Queue</span>
+        <span class="field-value badge" id="queueCount">0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Alert Banner ──────────────────────────────────────────── -->
+  <div class="alert" id="alertBanner" hidden>
+    <span id="alertIcon">⚠</span>
+    <span id="alertMessage"></span>
+    <button class="alert-close" onclick="document.getElementById('alertBanner').hidden=true">✕</button>
+  </div>
+
+  <!-- ── Main Grid ─────────────────────────────────────────────── -->
+  <main class="main-grid">
+
+    <!-- ── Left: My QR Code ───────────────────────────────────── -->
+    <section class="card" id="myQrCard">
+      <div class="card-header">
+        <h2 class="card-title">
+          <span class="card-icon">📡</span>
+          My Node QR Code
+        </h2>
+        <p class="card-desc">Let trading partners scan this code to register your node.</p>
+      </div>
+
+      <div class="qr-placeholder" id="qrPlaceholder">
+        <div class="qr-spinner"></div>
+        <p>Generating QR…</p>
+      </div>
+      <div id="qrCanvas" hidden></div>
+
+      <div class="qr-url-row" id="qrUrlRow" hidden>
+        <span class="qr-url-text mono" id="qrUrl"></span>
+        <button class="btn btn-ghost" id="copyUrlBtn" title="Copy URL">
+          <span>Copy</span>
+        </button>
+      </div>
+
+      <div class="card-footer" id="keysWarning" hidden>
+        <div class="warning-box">
+          ⚠ Node keys not configured — run <code>make keys</code> then <code>make migrate</code>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Right: Register Partner ────────────────────────────── -->
+    <section class="card" id="registerCard">
+      <div class="card-header">
+        <h2 class="card-title">
+          <span class="card-icon">🤝</span>
+          Register a Partner
+        </h2>
+        <p class="card-desc">Scan a partner's QR code or paste their AS5 config URL.</p>
+      </div>
+
+      <!-- Scan tab -->
+      <div class="tabs">
+        <button class="tab active" id="tabScan" onclick="switchTab('scan')">📷 Scan QR</button>
+        <button class="tab" id="tabManual" onclick="switchTab('manual')">⌨ Manual</button>
+      </div>
+
+      <!-- Camera panel -->
+      <div id="scanPanel">
+        <div class="camera-container" id="cameraContainer">
+          <video id="scanVideo" autoplay playsinline muted></video>
+          <canvas id="scanCanvas" hidden></canvas>
+          <div class="camera-overlay">
+            <div class="scan-reticle"></div>
+          </div>
+          <div class="camera-hint">Point at partner's AS5 QR code</div>
+        </div>
+        <div class="camera-actions">
+          <button class="btn btn-primary" id="startCamBtn" onclick="startCamera()">
+            📷 Start Camera
+          </button>
+          <button class="btn btn-ghost" id="stopCamBtn" hidden onclick="stopCamera()">
+            ■ Stop
+          </button>
+        </div>
+        <div class="scan-result" id="scanResult" hidden>
+          <span class="scan-result-label">Detected URL:</span>
+          <span class="scan-result-url mono" id="scannedUrl"></span>
+          <button class="btn btn-primary" id="registerScannedBtn">Register Partner</button>
+        </div>
+      </div>
+
+      <!-- Manual panel -->
+      <div id="manualPanel" hidden>
+        <div class="form-group">
+          <label class="form-label" for="partnerUrl">Partner AS5 Config URL</label>
+          <input class="form-input" id="partnerUrl" type="url"
+                 placeholder="https://partner.example.com/as5/config"/>
+        </div>
+      </div>
+
+      <!-- API Key (shared between tabs) -->
+      <div class="form-group api-key-group">
+        <label class="form-label" for="apiKeyInput">
+          API Key
+          <span class="form-hint">(stored in session only)</span>
+        </label>
+        <input class="form-input" id="apiKeyInput" type="password"
+               placeholder="Your node API key"/>
+      </div>
+
+      <button class="btn btn-primary btn-full" id="registerManualBtn" hidden
+              onclick="registerManual()">
+        🤝 Register Partner
+      </button>
+
+      <!-- Result panel -->
+      <div class="register-result success" id="registerSuccess" hidden>
+        <span>✓</span>
+        <span id="registerSuccessMsg">Partner registered successfully!</span>
+      </div>
+      <div class="register-result error" id="registerError" hidden>
+        <span>✗</span>
+        <span id="registerErrorMsg"></span>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── Footer ───────────────────────────────────────────────── -->
+  <footer class="app-footer">
+    <a href="/.well-known/jwks.json" target="_blank" rel="noopener">JWKS</a>
+    <a href="/as5/config" target="_blank" rel="noopener">AS5 Config</a>
+    <a href="/health" target="_blank" rel="noopener">Health</a>
+    <a href="https://github.com/GreicodexJM/fidex-protocol" target="_blank" rel="noopener">Protocol Spec</a>
+    <span class="footer-sep">|</span>
+    <a href="https://github.com/GreicodexJM" target="_blank" rel="noopener" class="footer-brand">
+      <img src="/img/greicodex-logo.png" alt="Greicodex" class="greicodex-logo"/>
+      <span>GreicodexJM</span>
+    </a>
+  </footer>
+
+  <!-- ── Scripts ──────────────────────────────────────────────── -->
+  <script src="lib/qrcode.js"></script>
+  <script src="lib/jsQR.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

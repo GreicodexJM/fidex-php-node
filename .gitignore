@@ -1,0 +1,41 @@
+# Dependencies
+/vendor/
+/node_modules/
+
+# Environment
+/.env
+
+# Keys (NEVER commit private keys)
+/keys/*.pem
+
+# Database
+/storage/*.sqlite
+/storage/*.sqlite-shm
+/storage/*.sqlite-wal
+
+# Logs
+/storage/logs/*.log
+
+# PHPUnit cache
+/.phpunit.cache
+/.phpunit.result.cache
+
+# PHPStan
+/.phpstan.result.cache
+
+# IDE
+/.idea/
+/.vscode/
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Compiled webapp output IS committed (cPanel users have no Node.js)
+# To recompile from source: make build-webapp
+# public/onboarding/app.js  ← intentionally NOT ignored
+
+# Lock files
+# composer.lock is NOT ignored — pin your dependencies
+# package-lock.json is NOT ignored — pin your dependencies

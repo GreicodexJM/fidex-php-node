@@ -1,0 +1,2 @@
+# Private keys are stored here. Never commit .pem files.
+# Generate keys with: make keys

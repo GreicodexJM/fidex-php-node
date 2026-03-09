@@ -1,0 +1,13 @@
+{
+  "name": "fidex-php-webapp",
+  "version": "0.1.0",
+  "description": "FideX PHP node — QR Onboarding Webapp (TypeScript source)",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p webapp/tsconfig.json",
+    "watch": "tsc -p webapp/tsconfig.json --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
