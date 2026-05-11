@@ -28,6 +28,12 @@ final class RegisterPartner
         private readonly PartnerRepositoryPort $partnerRepository,
         private readonly HttpClientPort        $httpClient,
         private readonly LoggerPort            $logger,
+        /**
+         * Development/testing escape hatch: when true, accepts plain http://
+         * as5_config_url values. Always false in production.
+         * Toggled via the FIDEX_ALLOW_HTTP_REGISTRATION env var (default false).
+         */
+        private readonly bool                  $allowHttp = false,
     ) {
     }
 
@@ -39,7 +45,9 @@ final class RegisterPartner
             return Result::failure(Result::ERR_VALIDATION_ERROR, 'as5_config_url is required.');
         }
 
-        if (!str_starts_with($as5ConfigUrl, 'https://')) {
+        $isHttps = str_starts_with($as5ConfigUrl, 'https://');
+        $isHttp  = str_starts_with($as5ConfigUrl, 'http://');
+        if (!$isHttps && !($this->allowHttp && $isHttp)) {
             return Result::failure(
                 Result::ERR_VALIDATION_ERROR,
                 'as5_config_url must use HTTPS.'

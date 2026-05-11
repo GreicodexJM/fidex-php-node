@@ -91,7 +91,11 @@ $transmitMessage = $signingKeyPair !== null
 
 $receiveMessage  = new ReceiveMessage($messageRepo, $partnerRepo, $queue, $logger, $nodeId);
 $processReceipt  = new ProcessReceipt($messageRepo, $partnerRepo, $cryptoService, $logger);
-$registerPartner = new RegisterPartner($partnerRepo, $httpClient, $logger);
+$allowHttpRegistration = filter_var(
+    $_ENV['FIDEX_ALLOW_HTTP_REGISTRATION'] ?? getenv('FIDEX_ALLOW_HTTP_REGISTRATION') ?: 'false',
+    FILTER_VALIDATE_BOOLEAN
+);
+$registerPartner = new RegisterPartner($partnerRepo, $httpClient, $logger, $allowHttpRegistration);
 
 // ── Controllers ─────────────────────────────────────────────────────────────
 $transmitController = $transmitMessage !== null
