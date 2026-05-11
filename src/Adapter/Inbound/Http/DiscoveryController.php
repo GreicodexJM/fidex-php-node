@@ -63,22 +63,37 @@ final class DiscoveryController
      * GET /as5/config
      *
      * Returns this node's AS5 discovery configuration.
+     * Schema matches fidex-protocol-specification.md §6.2 exactly:
+     * nested `endpoints` and `security` documents, canonical field names.
      * Trading partners use this URL to register with your node.
      *
      * @param array<string, string> $params
      */
     public function as5Config(array $params): void
     {
+        // Strip query string from base URL when deriving public_domain.
+        $publicDomain = (string) parse_url($this->nodeBaseUrl, PHP_URL_HOST);
+
         $config = [
-            'fidex_version'    => '1.0',
-            'partner_id'       => $this->nodeId,
-            'name'             => $this->nodeName,
-            'receive_endpoint' => $this->nodeBaseUrl . '/api/v1/receive',
-            'receipt_endpoint' => $this->nodeBaseUrl . '/api/v1/receipt',
-            'jwks_url'         => $this->nodeBaseUrl . '/.well-known/jwks.json',
-            'as5_config_url'   => $this->nodeBaseUrl . '/as5/config',
-            'capabilities'     => ['sign', 'encrypt', 'receive', 'receipt'],
-            'implementation'   => 'fidex-php/1.0 (https://github.com/GreicodexJM/fidex-protocol)',
+            'fidex_version'             => '1.0',
+            'supported_versions'        => ['1.0'],
+            'conformance_profile'       => 'core',
+            'node_id'                   => $this->nodeId,
+            'organization_name'         => $this->nodeName,
+            'public_domain'             => $publicDomain,
+            'supported_document_types'  => [],
+            'endpoints' => [
+                'receive_message' => $this->nodeBaseUrl . '/api/v1/receive',
+                'receive_receipt' => $this->nodeBaseUrl . '/api/v1/receipt',
+                'register'        => $this->nodeBaseUrl . '/api/v1/register',
+                'jwks'            => $this->nodeBaseUrl . '/.well-known/jwks.json',
+            ],
+            'security' => [
+                'signature_algorithm'  => 'RS256',
+                'encryption_algorithm' => 'RSA-OAEP',
+                'content_encryption'   => 'A256GCM',
+                'minimum_key_size'     => 2048,
+            ],
         ];
 
         header('Content-Type: application/json');

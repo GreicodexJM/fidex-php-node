@@ -66,23 +66,43 @@ final class RegisterPartner
             );
         }
 
-        // ── Step 3: Extract required fields ────────────────────────────────
+        // ── Step 3: Extract required fields (spec §6.2 shape) ──────────────
 
-        $required = ['partner_id', 'name', 'receive_endpoint', 'receipt_endpoint', 'jwks_url'];
-        foreach ($required as $field) {
-            if (empty($config[$field])) {
+        // The canonical AS5 config document carries the per-operation URLs in
+        // a nested `endpoints` object. Field names are node_id / organization_name.
+        if (empty($config['node_id'])) {
+            return Result::failure(
+                Result::ERR_VALIDATION_ERROR,
+                'AS5 config is missing required field: node_id'
+            );
+        }
+        if (empty($config['organization_name'])) {
+            return Result::failure(
+                Result::ERR_VALIDATION_ERROR,
+                'AS5 config is missing required field: organization_name'
+            );
+        }
+        $endpoints = $config['endpoints'] ?? null;
+        if (!is_array($endpoints)) {
+            return Result::failure(
+                Result::ERR_VALIDATION_ERROR,
+                'AS5 config is missing required object: endpoints'
+            );
+        }
+        foreach (['receive_message', 'receive_receipt', 'jwks'] as $epField) {
+            if (empty($endpoints[$epField])) {
                 return Result::failure(
                     Result::ERR_VALIDATION_ERROR,
-                    "AS5 config is missing required field: {$field}"
+                    "AS5 config is missing required endpoint: endpoints.{$epField}"
                 );
             }
         }
 
-        $partnerId       = (string) $config['partner_id'];
-        $name            = (string) $config['name'];
-        $receiveEndpoint = (string) $config['receive_endpoint'];
-        $receiptEndpoint = (string) $config['receipt_endpoint'];
-        $jwksUrl         = (string) $config['jwks_url'];
+        $partnerId       = (string) $config['node_id'];
+        $name            = (string) $config['organization_name'];
+        $receiveEndpoint = (string) $endpoints['receive_message'];
+        $receiptEndpoint = (string) $endpoints['receive_receipt'];
+        $jwksUrl         = (string) $endpoints['jwks'];
 
         // ── Step 4: Check for existing partner ─────────────────────────────
 

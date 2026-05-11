@@ -42,16 +42,28 @@ final class RegisterPartnerTest extends TestCase
 
     // ── Helpers ───────────────────────────────────────────────────────────
 
-    /** Returns a well-formed AS5 config array (as returned by json()). */
+    /** Returns a well-formed AS5 config array matching spec §6.2 shape. */
     private function validAs5Config(string $partnerId = 'urn:custom:partner-b'): array
     {
         return [
-            'partner_id'       => $partnerId,
-            'name'             => 'Partner B Pharmacy',
-            'receive_endpoint' => 'https://partner-b.example.com/api/v1/receive',
-            'receipt_endpoint' => 'https://partner-b.example.com/api/v1/receipt',
-            'jwks_url'         => 'https://partner-b.example.com/.well-known/jwks.json',
-            'as5_config_url'   => 'https://partner-b.example.com/as5/config',
+            'fidex_version'      => '1.0',
+            'supported_versions' => ['1.0'],
+            'conformance_profile' => 'core',
+            'node_id'            => $partnerId,
+            'organization_name'  => 'Partner B Pharmacy',
+            'public_domain'      => 'partner-b.example.com',
+            'endpoints' => [
+                'receive_message' => 'https://partner-b.example.com/api/v1/receive',
+                'receive_receipt' => 'https://partner-b.example.com/api/v1/receipt',
+                'register'        => 'https://partner-b.example.com/api/v1/register',
+                'jwks'            => 'https://partner-b.example.com/.well-known/jwks.json',
+            ],
+            'security' => [
+                'signature_algorithm'  => 'RS256',
+                'encryption_algorithm' => 'RSA-OAEP',
+                'content_encryption'   => 'A256GCM',
+                'minimum_key_size'     => 2048,
+            ],
         ];
     }
 
@@ -104,7 +116,7 @@ final class RegisterPartnerTest extends TestCase
     public function test_returns_failure_when_as5_config_is_missing_required_field(): void
     {
         $config = $this->validAs5Config();
-        unset($config['receive_endpoint']); // remove required field
+        unset($config['endpoints']['receive_message']); // remove required endpoint
 
         $this->httpClient
             ->method('get')
@@ -116,7 +128,7 @@ final class RegisterPartnerTest extends TestCase
 
         $this->assertFalse($result->isSuccess());
         $this->assertSame(Result::ERR_VALIDATION_ERROR, $result->getError());
-        $this->assertStringContainsString('receive_endpoint', $result->getMessage());
+        $this->assertStringContainsString('endpoints.receive_message', $result->getMessage());
     }
 
     // ── Tests: Duplicate partner ───────────────────────────────────────────
