@@ -40,6 +40,10 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: GreicodexJM/fidex-conformance
+          # Pinned to feature/FID-7-interop until the matching PR
+          # (GreicodexJM/fidex-conformance#1) merges to master; revert
+          # to the default branch in the follow-up cleanup commit.
+          ref: feature/FID-7-interop
           path: fidex-conformance
 
       - name: Setup PHP 8.2
