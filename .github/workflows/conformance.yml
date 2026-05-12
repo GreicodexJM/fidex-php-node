@@ -1,0 +1,222 @@
+name: FideX Conformance
+
+# Runs the FideX 1.0 conformance suite against this PHP node on every PR
+# and push to main. The PHP node is the Node Under Test (NUT) and the Go
+# reference implementation (fidex-go-node) acts as the peer — validating
+# cross-implementation interop in both directions.
+#
+# A regression in the `core` profile blocks merge. Failures in the
+# `enhanced` and `edge` profiles are advisory until the matching gaps
+# are implemented.
+#
+# This workflow uses only static string inputs and built-in path env vars
+# ($GITHUB_WORKSPACE). No untrusted event payload fields are interpolated.
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+jobs:
+  conformance-core:
+    name: core profile
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout FideX-php (NUT)
+        uses: actions/checkout@v4
+        with:
+          path: fidex-php
+
+      - name: Checkout reference peer (Go)
+        uses: actions/checkout@v4
+        with:
+          repository: GreicodexJM/fidex-go-node
+          path: fidex-go
+
+      - name: Checkout conformance suite
+        uses: actions/checkout@v4
+        with:
+          repository: GreicodexJM/fidex-conformance
+          path: fidex-conformance
+
+      - name: Setup PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo, pdo_sqlite, openssl, curl, json, mbstring, sqlite3
+          coverage: none
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: fidex-go/go.sum
+
+      - name: Build Go reference peer
+        working-directory: fidex-go
+        run: go build -o fidex-node ./cmd/fidex-node
+
+      - name: Install NUT dependencies
+        working-directory: fidex-php
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Generate NUT crypto keys
+        working-directory: fidex-php
+        run: php bin/generate-keys.php
+
+      - name: Run NUT migrations
+        working-directory: fidex-php
+        env:
+          FIDEX_DB_DRIVER: sqlite
+          FIDEX_DB_PATH: /tmp/fidex-php-ci.sqlite
+        run: |
+          rm -f "$FIDEX_DB_PATH"
+          php bin/migrate.php
+
+      - name: Boot FideX-php (NUT)
+        working-directory: fidex-php
+        env:
+          FIDEX_NODE_ID: urn:custom:fidex-php-ci
+          FIDEX_NODE_NAME: FideX-php (CI NUT)
+          FIDEX_NODE_BASE_URL: http://localhost:18081
+          FIDEX_API_KEY: ci-conformance-key-32-chars-aaaaaaa
+          FIDEX_DB_DRIVER: sqlite
+          FIDEX_DB_PATH: /tmp/fidex-php-ci.sqlite
+          FIDEX_ALLOW_HTTP_REGISTRATION: 'true'
+        run: |
+          setsid php -S 0.0.0.0:18081 -t public/ public/index.php \
+            > /tmp/fidex-php-ci.log 2>&1 < /dev/null &
+          for _ in {1..30}; do
+            curl -fsS http://localhost:18081/health >/dev/null 2>&1 && exit 0
+            sleep 0.5
+          done
+          echo "::error::FideX-php did not become healthy within 15s"
+          tail -50 /tmp/fidex-php-ci.log
+          exit 1
+
+      - name: Run conformance (core)
+        working-directory: fidex-conformance
+        env:
+          PEER_PORT: '19081'
+          PEER_INTERNAL_PORT: '19082'
+        run: |
+          export PEER_REPO="$GITHUB_WORKSPACE/fidex-go"
+          ./runner.sh \
+            --peer-type go \
+            --node-name "FideX-php (CI)" \
+            --node-as5-url http://localhost:18081/as5/config \
+            --node-id urn:custom:fidex-php-ci \
+            --node-transmit-url http://localhost:18081/api/v1/transmit \
+            --node-transmit-api-key ci-conformance-key-32-chars-aaaaaaa \
+            --node-discover-url http://localhost:18081/api/v1/partners/register \
+            --node-discover-api-key ci-conformance-key-32-chars-aaaaaaa \
+            --node-db-path /tmp/fidex-php-ci.sqlite \
+            --node-messages-table fidex_messages \
+            --node-messages-direction inbound \
+            --profile core
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: conformance-report-core
+          path: |
+            fidex-conformance/results/conformance-report.json
+            fidex-conformance/results/badge.svg
+            /tmp/fidex-php-ci.log
+
+  conformance-edge:
+    name: edge profile (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    needs: conformance-core
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: fidex-php
+      - uses: actions/checkout@v4
+        with:
+          repository: GreicodexJM/fidex-go-node
+          path: fidex-go
+      - uses: actions/checkout@v4
+        with:
+          repository: GreicodexJM/fidex-conformance
+          path: fidex-conformance
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo, pdo_sqlite, openssl, curl, json, mbstring, sqlite3
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache-dependency-path: fidex-go/go.sum
+
+      - name: Build Go peer
+        working-directory: fidex-go
+        run: go build -o fidex-node ./cmd/fidex-node
+
+      - name: Install NUT deps
+        working-directory: fidex-php
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Generate NUT crypto keys
+        working-directory: fidex-php
+        run: php bin/generate-keys.php
+
+      - name: Migrate + boot NUT
+        working-directory: fidex-php
+        env:
+          FIDEX_NODE_ID: urn:custom:fidex-php-ci
+          FIDEX_NODE_NAME: FideX-php (CI NUT)
+          FIDEX_NODE_BASE_URL: http://localhost:18081
+          FIDEX_API_KEY: ci-conformance-key-32-chars-aaaaaaa
+          FIDEX_DB_DRIVER: sqlite
+          FIDEX_DB_PATH: /tmp/fidex-php-ci.sqlite
+          FIDEX_ALLOW_HTTP_REGISTRATION: 'true'
+        run: |
+          rm -f "$FIDEX_DB_PATH"
+          php bin/migrate.php
+          setsid php -S 0.0.0.0:18081 -t public/ public/index.php \
+            > /tmp/fidex-php-ci.log 2>&1 < /dev/null &
+          for _ in {1..30}; do
+            curl -fsS http://localhost:18081/health >/dev/null 2>&1 && exit 0
+            sleep 0.5
+          done
+          tail -50 /tmp/fidex-php-ci.log
+          exit 1
+
+      - name: Run conformance (edge)
+        working-directory: fidex-conformance
+        env:
+          PEER_PORT: '19081'
+          PEER_INTERNAL_PORT: '19082'
+        run: |
+          export PEER_REPO="$GITHUB_WORKSPACE/fidex-go"
+          ./runner.sh \
+            --peer-type go \
+            --node-name "FideX-php (CI)" \
+            --node-as5-url http://localhost:18081/as5/config \
+            --node-id urn:custom:fidex-php-ci \
+            --node-transmit-url http://localhost:18081/api/v1/transmit \
+            --node-transmit-api-key ci-conformance-key-32-chars-aaaaaaa \
+            --node-discover-url http://localhost:18081/api/v1/partners/register \
+            --node-discover-api-key ci-conformance-key-32-chars-aaaaaaa \
+            --node-db-path /tmp/fidex-php-ci.sqlite \
+            --node-messages-table fidex_messages \
+            --node-messages-direction inbound \
+            --profile edge \
+            || echo "::warning::enhanced/edge profile failures advisory pending CONFORMANCE.md gap closure"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: conformance-report-edge
+          path: |
+            fidex-conformance/results/conformance-report.json
+            fidex-conformance/results/badge.svg
+            /tmp/fidex-php-ci.log
