@@ -26,18 +26,18 @@ jobs:
 
     steps:
       - name: Checkout FideX-php (NUT)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: fidex-php
 
       - name: Checkout reference peer (Go)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: GreicodexJM/fidex-go-node
           path: fidex-go
 
       - name: Checkout conformance suite
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: GreicodexJM/fidex-conformance
           path: fidex-conformance
@@ -50,7 +50,7 @@ jobs:
           coverage: none
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: '1.24'
           cache-dependency-path: fidex-go/go.sum
@@ -120,7 +120,7 @@ jobs:
 
       - name: Upload report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: conformance-report-core
           path: |
@@ -136,14 +136,14 @@ jobs:
     needs: conformance-core
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           path: fidex-php
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           repository: GreicodexJM/fidex-go-node
           path: fidex-go
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           repository: GreicodexJM/fidex-conformance
           path: fidex-conformance
@@ -151,7 +151,7 @@ jobs:
         with:
           php-version: '8.2'
           extensions: pdo, pdo_sqlite, openssl, curl, json, mbstring, sqlite3
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.24'
           cache-dependency-path: fidex-go/go.sum
@@ -212,7 +212,7 @@ jobs:
             --profile edge \
             || echo "::warning::enhanced/edge profile failures advisory pending CONFORMANCE.md gap closure"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: conformance-report-edge
