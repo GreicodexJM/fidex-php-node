@@ -1,0 +1,8 @@
+# GitHub linguist hints — exclude vendored JS libraries from language stats
+# so the repo correctly identifies as PHP (not JavaScript).
+public/onboarding/lib/* linguist-vendored=true
+
+# Generated/built assets (if added later) should also be excluded
+public/dist/** linguist-generated=true
+*.min.js linguist-generated=true
+*.min.css linguist-generated=true
