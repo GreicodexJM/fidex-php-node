@@ -46,7 +46,13 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: pdo, pdo_sqlite, openssl, curl, json, mbstring, sqlite3
+          # gmp is REQUIRED for FideX conformance: brick/math falls back to
+          # a pure-PHP calculator without it, and 4096-bit RSA-OAEP modPow
+          # in pure-PHP routinely runs minutes per envelope — which makes
+          # the queue worker hang inside the suite's 30s drain budget.
+          # bcmath is a viable secondary backend; we install both so the
+          # workflow stays portable across PHP versions.
+          extensions: pdo, pdo_sqlite, openssl, curl, json, mbstring, sqlite3, gmp, bcmath
           coverage: none
 
       - name: Setup Go
@@ -116,6 +122,7 @@ jobs:
             --node-db-path /tmp/fidex-php-ci.sqlite \
             --node-messages-table fidex_messages \
             --node-messages-direction inbound \
+            --node-worker-cmd "cd $GITHUB_WORKSPACE/fidex-php && FIDEX_NODE_ID=urn:custom:fidex-php-ci FIDEX_NODE_BASE_URL=http://localhost:18081 FIDEX_API_KEY=ci-conformance-key-32-chars-aaaaaaa FIDEX_DB_DRIVER=sqlite FIDEX_DB_PATH=/tmp/fidex-php-ci.sqlite FIDEX_ALLOW_HTTP_REGISTRATION=true timeout 60s php bin/worker.php" \
             --profile core
 
       - name: Upload report
@@ -150,7 +157,13 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: pdo, pdo_sqlite, openssl, curl, json, mbstring, sqlite3
+          # gmp is REQUIRED for FideX conformance: brick/math falls back to
+          # a pure-PHP calculator without it, and 4096-bit RSA-OAEP modPow
+          # in pure-PHP routinely runs minutes per envelope — which makes
+          # the queue worker hang inside the suite's 30s drain budget.
+          # bcmath is a viable secondary backend; we install both so the
+          # workflow stays portable across PHP versions.
+          extensions: pdo, pdo_sqlite, openssl, curl, json, mbstring, sqlite3, gmp, bcmath
       - uses: actions/setup-go@v6
         with:
           go-version: '1.24'
@@ -209,6 +222,7 @@ jobs:
             --node-db-path /tmp/fidex-php-ci.sqlite \
             --node-messages-table fidex_messages \
             --node-messages-direction inbound \
+            --node-worker-cmd "cd $GITHUB_WORKSPACE/fidex-php && FIDEX_NODE_ID=urn:custom:fidex-php-ci FIDEX_NODE_BASE_URL=http://localhost:18081 FIDEX_API_KEY=ci-conformance-key-32-chars-aaaaaaa FIDEX_DB_DRIVER=sqlite FIDEX_DB_PATH=/tmp/fidex-php-ci.sqlite FIDEX_ALLOW_HTTP_REGISTRATION=true timeout 60s php bin/worker.php" \
             --profile edge \
             || echo "::warning::enhanced/edge profile failures advisory pending CONFORMANCE.md gap closure"
 
